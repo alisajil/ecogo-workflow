@@ -426,7 +426,8 @@ Full technical details live in the skill file at `skills/ecogo/SKILL.md`.
 
 ## Status
 
-- `v0.3.0` — current release with intelligent skill orchestration, model routing, self-improvement loop
+- `v0.3.0` — current release: single-word `/ecogo` invocation, intelligent skill orchestration, model routing, self-improvement loop
+- Full version history in [CHANGELOG.md](CHANGELOG.md)
 - MIT-licensed
 - Bundles the `brainstorming` and `subagent-driven-development` skills from [superpowers](https://github.com/obra/superpowers) (MIT © Jesse Vincent)
 
