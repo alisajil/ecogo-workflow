@@ -1,227 +1,438 @@
 # ecogo-workflow
 
-**A self-correcting engineering knowledge base for software teams.** Capture architectural decisions, tradeoffs, and runbooks. Keep them synced with the code they describe. Onboard engineers, explain legacy, track post-mortems — all from natural-language commands in Claude Code.
+**A Claude Code plugin that gives software developers a self-correcting knowledge base.** It reads your RFCs, design docs, PR descriptions, and code. It answers your questions with citations. It fixes itself when the code changes. It learns *your* conventions over time.
+
+You talk to it in plain English. It does the rest.
 
 ```
-eco go save https://my-rfc.example.com         # ingest an RFC
-eco go how does our auth flow work?             # answered with citations (memory-first)
-eco go the deployment runbook looks wrong       # re-ground against sources + code
-eco go design a rate limiter                    # invokes the brainstorming skill
-eco go build me an auth service from scratch    # chains design → plan → subagent execute
-eco go what should I work on next               # see open backlog
-eco go audit the engineering docs               # find drift, broken refs, stale pages
-eco go                                          # do whatever's most useful right now
+eco go save https://my-rfc.example.com         ← feed it an RFC
+eco go how does our auth flow work?             ← get an answer with citations
+eco go the deployment runbook looks wrong       ← it re-grounds against your code
+eco go design a rate limiter                    ← walks you through a proper design
+eco go build me an auth service from scratch    ← design → plan → implementation
 ```
 
-## What it's for
+---
 
-Engineering teams accumulate decisions: *why* we picked gRPC over HTTP, *why* the retry strategy is 3-and-back-off, *why* we abandoned the v1 event schema. Most of that knowledge either lives in Slack threads that rot, in PR descriptions no one re-reads, or only in the heads of the two senior engineers who were there. When those engineers leave, the knowledge leaves with them.
+## Why a developer should care
 
-ecogo-workflow is a workflow for building that knowledge in a place it can compound. It reads your RFCs, design docs, PR descriptions, and code, writes cross-linked wiki pages in your Obsidian vault, and — crucially — **re-verifies its own claims against the code they describe when you ask it to**.
+Every engineering team has the same problem: **the knowledge rots faster than it's written**. Slack threads disappear. PR descriptions are one-shot. The two senior engineers who know why v1 was abandoned eventually leave. New engineers spend weeks "asking around".
 
-### Use cases
+ecogo-workflow is a disciplined habit that compounds. You feed it the sources you already write (RFCs, design docs, meeting notes, ADRs, code comments) and it:
 
-- **Architectural Decision Records** — `rationale` extracts tradeoff/alternative/historical context so ADRs write themselves from your existing docs
-- **Onboarding new engineers** — they ask `eco go how does X work?`, get an answer with citations into your codebase
-- **Runbook upkeep** — when code changes, `correct` re-grounds a runbook page against the files it references and removes claims that no longer hold
-- **Post-mortem catalogue** — the `learn` subsystem watches recurring issues and proposes preventive rules that harden future behaviour
-- **API doc drift** — `eval` scores whether the base can still answer the questions it promised to answer; regressions surface automatically
-- **Technical debt ledger** — `gap` scans your pages for "TODO / follow-up / remains as" prose and stages those items into an actionable backlog
+| Situation | What it does |
+|-----------|--------------|
+| You write a new RFC | You ingest it; the plugin cross-links it to everything related |
+| You join a new team | You ask in plain English and get grounded answers pointing into the real code |
+| The code changed and docs didn't | `correct` re-grounds the affected page automatically |
+| Same bug keeps biting you | `learn` notices the pattern and drafts a preventive rule |
+| You're starting a new feature | `brainstorming` walks you from one-line idea to a written design spec before any code |
+| You have a plan ready to execute | `subagent-driven-development` runs it task-by-task with two-stage review |
 
-### Why it works
+It runs in [Claude Code](https://claude.com/claude-code). Your knowledge lives in [Obsidian](https://obsidian.md) (so it's portable — plain markdown files on your own disk, not locked in a vendor's database).
 
-Every claim on a wiki page traces back to a cited source. When a page looks wrong, `correct` grounds it — strictly for API names, versions, endpoints, and numeric thresholds (must appear verbatim in the source); loosely for interpretive prose. If a claim isn't in the cited source but is in a declared code repository ("source-root"), the citation is fixed rather than the claim deleted. The plugin treats "accurate but miscited" as a first-class outcome — which is a huge proportion of real-world engineering documentation.
+---
 
-### How it improves itself
+## What you'll need before installing
 
-Every operation the plugin runs emits observations to an append-only log. `learn` distils recurring observations into named patterns; once a pattern crosses a threshold (default ≥ 5 observations in 30 days), the subsystem drafts a proposed rule. You accept or reject. Accepted rules become a runtime overlay read by every subsequent operation — no skill edits required. Promoted rules become permanent schema in the base's `CLAUDE.md`. Over weeks, the plugin learns *your* conventions (which rationale kinds you delete most, which source paths deserve auto-ingestion, which pages are high-signal) and bends its behaviour around them. See `ecogo learn` for the full lifecycle.
+Three tools. All free. All work on Mac and Windows.
 
-## Thirteen operations
+1. **Claude Code** — Anthropic's CLI / desktop app. Get it from [claude.com/claude-code](https://claude.com/claude-code).
+2. **Obsidian** — the editor where your knowledge will live. Get it from [obsidian.md](https://obsidian.md).
+3. **Git** — for tracking changes to your knowledge base. Most devs already have this; if not, get it from [git-scm.com](https://git-scm.com).
 
-| Operation | Purpose |
-|-----------|---------|
-| `init` | Scaffold a new knowledge base inside your Obsidian vault |
-| `migrate` | Upgrade an older base to the current schema — idempotent, additive |
-| `ingest` | Save a source (URL or file) to `raw/` — does not process yet |
-| `compile` | Read uncompiled sources, synthesise cross-linked wiki pages, run a bounded self-critique loop to catch fabrication and drift |
-| `query` | Answer a question with `[[wikilink]]` citations and file the answer for later promotion to a concept page |
-| `correct` | Re-ground a page against its cited sources and source-roots; remove unsupported claims, fix citations when they're wrong but the claim is right |
-| `rationale` | Extract the *why* — tradeoffs, alternatives, historical decisions. Inline Obsidian callouts, promoted to shared entity pages when reused, frontmatter tags for discovery |
-| `eval` | Score the base against a defined question set; track regressions over time |
-| `gap` | Stage open knowledge gaps from lint reports, compile-unresolved flags, eval misses, and follow-up prose already living inside existing pages |
-| `fetch` | Pull external sources to close open backlog items |
-| `learn` | Roll up recurring observations into proposed rules; accept, reject, or promote them into schema |
-| `lint` | Audit for dead links, orphan pages, missing sections |
-| `run` | Composer that chains ops into profiled pipelines (default / cheap / expensive / canary) for scheduled runs |
-| `remove` | Delete a knowledge base cleanly |
+You also need **Node.js 18+** — needed because the plugin auto-installs a search tool on first use. Get it from [nodejs.org](https://nodejs.org) if you don't have it.
 
-Plus a **natural-language router** — `/eco go <whatever you want in English>` — that maps plain language onto the right op **or bundled skill**. The router orchestrates all capabilities intelligently:
+---
 
-- **Retrieval intent** ("how did we decide X", "what is Y") → checks filed query answers, then past conversations via `episodic-memory:search-conversations` (if installed), then the base's own `query` op — whichever has the answer first.
-- **Design intent** ("design X", "new feature Y") → routes to the bundled `brainstorming` skill. Its hard-gate ("no code until approved") is never skipped.
-- **Execution intent** ("build it", "implement the plan") → routes to the bundled `subagent-driven-development` skill. Fresh subagent per task with two-stage review.
-- **Chained intent** ("build me X from scratch") → chains design → plan → execute, with a user approval gate at each link.
-- **Upkeep intent** (bare `eco go`) → the decision ladder runs the most useful op for current state: compile uncompiled sources, lint if stale, eval if stale, distill observations if new ones have accumulated, etc.
+## Step-by-step: Mac setup
 
-## Bundled workflow skills
+### 1. Install Claude Code
 
-Two skills are bundled so the design-to-execution pipeline is available out of the box — no separate plugin install. Both are MIT-licensed redistributions from the superpowers plugin by Jesse Vincent. See [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) for credit and license.
-
-### `/ecogo-workflow:brainstorming`
-
-Before you build a new feature, run this to walk the idea from one-line intent through clarifying dialogue, approach tradeoffs, a design document, self-review, and a written spec. The skill enforces a hard gate: **no code gets written until the design has been approved**. The single highest-leverage habit for avoiding wasted engineering work in unfamiliar problem spaces.
-
-```
-/ecogo-workflow:brainstorming add RBAC to the admin portal
-/ecogo-workflow:brainstorming we need a retry strategy for the upload service
-/ecogo-workflow:brainstorming refactor the rate limiter into a standalone library
-```
-
-### `/ecogo-workflow:subagent-driven-development`
-
-Executes a written implementation plan by dispatching a fresh subagent per task, reviewing the output in two passes (spec compliance then code quality), and looping fixes until both reviews approve. Keeps your own session context clean while work proceeds; catches scope drift, missing requirements, and quality issues before they compound.
-
-Natural pipeline: `brainstorming` produces a spec → you hand it to the writing-plans convention → `subagent-driven-development` executes each task with review gates.
-
-## Quick start
+Open Terminal (⌘+Space, type "Terminal", press Enter) and run:
 
 ```bash
-# Install
+npm install -g @anthropic-ai/claude-code
+```
+
+Then sign in:
+
+```bash
+claude
+```
+
+Follow the prompts to sign in with your Anthropic account.
+
+### 2. Install Obsidian
+
+Download the Obsidian DMG from [obsidian.md](https://obsidian.md) and drag it to Applications.
+
+Open Obsidian and create a new vault:
+
+- Click **Create** on the welcome screen
+- Name it **ObsidianVault**
+- Choose your home folder as the location (so the final path is `~/ObsidianVault`)
+- Click **Create**
+
+Inside the vault, create a folder called `03-Resources`:
+
+- Right-click in the left sidebar → **New folder** → type `03-Resources`
+
+That's the folder where your knowledge bases will live, one subfolder per topic.
+
+### 3. Configure git (if you haven't already)
+
+In Terminal:
+
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+```
+
+### 4. Install the ecogo-workflow plugin
+
+In Claude Code (the `claude` CLI or the desktop app), run:
+
+```
 /plugin marketplace add alisajil/ecogo-workflow
 /plugin install ecogo-workflow@ecogo-workflow
 ```
 
-### Prerequisites
+Then restart your Claude Code session to pick up the new commands.
 
-- Node.js 18+
-- Git (`user.name` and `user.email` configured) — every op commits to your vault
-- An Obsidian vault at `~/ObsidianVault/` with a `03-Resources/` directory (or configure a different path per base)
+### 5. Verify it works
 
-Dependencies (`qmd` for hybrid search, `marp-cli` for slide export) install automatically on first session start.
-
-### Create a knowledge base for your project
+Start a fresh session in Claude Code and type:
 
 ```
-/ecogo-workflow:ecogo init auth-platform
+/eco go
 ```
 
-or, equivalently,
+If you see a friendly "Base is idle. Nothing urgent." with a list of suggested next actions — you're set. Skip to **Your first 15 minutes** below.
+
+---
+
+## Step-by-step: Windows setup
+
+### 1. Install Node.js
+
+Download and run the Windows installer from [nodejs.org](https://nodejs.org). Pick the LTS version. Accept defaults.
+
+Open **PowerShell** (press Windows key, type "PowerShell", press Enter) and verify:
+
+```powershell
+node --version
+```
+
+You should see `v18.x.x` or higher.
+
+### 2. Install Claude Code
+
+In PowerShell:
+
+```powershell
+npm install -g @anthropic-ai/claude-code
+```
+
+Then sign in:
+
+```powershell
+claude
+```
+
+Follow the prompts to sign in with your Anthropic account.
+
+### 3. Install Obsidian
+
+Download the Obsidian installer from [obsidian.md](https://obsidian.md) and run it. Accept defaults.
+
+Open Obsidian and create a new vault:
+
+- Click **Create** on the welcome screen
+- Name it **ObsidianVault**
+- Choose your user folder as the location — e.g. `C:\Users\<YourName>\ObsidianVault`
+- Click **Create**
+
+Inside the vault, create a folder called `03-Resources`:
+
+- Right-click in the left sidebar → **New folder** → type `03-Resources`
+
+### 4. Install Git (if you don't have it)
+
+Download from [git-scm.com](https://git-scm.com). Run the installer. Accept defaults.
+
+In PowerShell:
+
+```powershell
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+```
+
+### 5. Install the ecogo-workflow plugin
+
+In Claude Code, run:
+
+```
+/plugin marketplace add alisajil/ecogo-workflow
+/plugin install ecogo-workflow@ecogo-workflow
+```
+
+Then restart your Claude Code session.
+
+### 6. Verify it works
+
+Start a fresh session and type:
+
+```
+/eco go
+```
+
+If it responds with "Base is idle" — you're good.
+
+---
+
+## Your first 15 minutes
+
+A guided walkthrough. Replace `auth-platform` with whatever topic you care about.
+
+### Step 1 — Create your first knowledge base
+
+In Claude Code:
 
 ```
 /eco go start a new knowledge base called auth-platform
 ```
 
-### Feed it your engineering material
+This creates `~/ObsidianVault/03-Resources/auth-platform/` with folders for raw sources, wiki pages, reports, and a schema file. Open that folder in Obsidian if you want to see the structure.
+
+### Step 2 — Feed it a source
+
+Any URL or file. An RFC, a design doc, a Notion page, a GitHub README, a meeting transcript. Let's use a web source:
 
 ```
-/eco go save https://example.com/our-auth-rfc.md
-/eco go save ~/workspace/design-docs/auth-session-design.md
+/eco go save https://raw.githubusercontent.com/golang/go/master/doc/README.md
+```
+
+This downloads the content to `raw/articles/` — it's not processed yet.
+
+### Step 3 — Compile
+
+```
 /ecogo-workflow:ecogo compile
 ```
 
-`ingest` lands raw sources in `raw/articles/`. `compile` synthesises source summaries, extracts entities (services, people, concepts, technologies), cross-links everything, runs self-critique to catch fabrication, and captures rationale as inline callouts near the facts they explain.
+The plugin reads the raw source, writes a summary page, extracts the interesting concepts into their own pages, cross-links everything, and captures rationale (the *why*) where it finds it. This takes a minute or two.
 
-### Ask engineering questions
-
-```
-/eco go how does our session renewal work?
-/eco go what were the tradeoffs between gRPC and HTTP for the supplier service?
-/eco go who owns the rate-limiter?
-```
-
-Answers come with `[[wikilinks]]` into your base. Every non-trivial claim has a source. Every answer is filed and promotable to a concept page.
-
-### Keep it honest when code changes
+### Step 4 — Ask a question
 
 ```
-/eco go the deployment runbook looks out of date
+/eco go tell me about the Go documentation structure
 ```
 
-Routes to `correct <page-slug>`. The op re-reads the page's cited sources and — if you've declared a source-root like `/path/to/your/code-repo` — also greps the code tree. Ungrounded claims are removed (never invented). Miscited accurate claims get their citation fixed. Contradicted claims are replaced with the source-supported version plus a `[!NOTE] Corrected` callout that cites the source excerpt that overrode them.
+You get back an answer with `[[wikilinks]]` — those are clickable in Obsidian and trace every claim back to the source you ingested. Every non-trivial factual claim is grounded.
 
-### Let it learn from itself
-
-Compile, lint, eval, fetch, gap, and correct all emit observations. `learn` distils those into named patterns. Once a class reaches a threshold (default: 5 observations within 30 days), `learn` drafts a proposed rule. You accept it and every subsequent op applies the rule as an additional constraint. You promote the rule to the base's schema once it has proven stable.
-
-Example rules the subsystem tends to propose over time:
-- *"When compiling person pages from single sources, do not add biographical claims unless verbatim in the source."*
-- *"Rationales of kind `historical` are deleted 60%+ of the time on this base — downweight them during extraction."*
-- *"Sources fetched from the `docs/internal/` root consistently miscite — always declare that path as a source-root on first encounter."*
-
-### Run it on a schedule
+### Step 5 — Check it
 
 ```
-# Daily full tick at 3am local
+/eco go audit the engineering docs
+```
+
+This runs the lint check — looks for broken links, orphan pages, missing sections. For a tiny base this should pass cleanly; you'll see results accumulate as the base grows.
+
+### Step 6 — Do the smart thing
+
+```
+/eco go
+```
+
+With no arguments, the plugin looks at the current state and picks the most useful action: compile if there's uncompiled raw material, lint if it's been a while, distill observations if the subsystem has new ones to roll up, etc. It announces what it's doing before doing it.
+
+---
+
+## Common workflows for developers
+
+### "I just wrote an RFC and I want it integrated"
+
+```
+/eco go save ~/work/rfcs/2026-04-auth-rotation.md
+/ecogo-workflow:ecogo compile
+/eco go
+```
+
+### "I'm starting a new feature and want a proper design first"
+
+```
+/eco go design an RBAC layer for the admin portal
+```
+
+This invokes the `brainstorming` skill. It asks clarifying questions one at a time, proposes 2-3 approaches with tradeoffs, writes a design spec, and hands it off to the plan skill. **It won't let you skip to code until you approve the design** — this is by design.
+
+### "I have a written plan and want to execute it"
+
+```
+/eco go implement the plan at docs/plans/rbac-plan.md
+```
+
+This invokes `subagent-driven-development`. It dispatches a fresh sub-agent per task, reviews the output in two passes (did they build what was asked? is the code good?), loops fixes until both gates pass, then moves to the next task.
+
+### "I think the docs are out of date"
+
+```
+/eco go the deployment runbook looks wrong
+```
+
+The plugin re-reads the cited sources, checks claims against your declared code directories (source-roots), and:
+- Grounded claims stay
+- Unsupported claims get removed (never replaced with invented text)
+- Miscited-but-accurate claims get their citation fixed
+- Contradicted claims get replaced with the source-supported version plus a visible "corrected" note
+
+### "Same bug keeps biting the team"
+
+Just keep using the plugin. Every `correct`, every `lint`, every `compile` emits observations. After 5+ observations of the same issue class within 30 days, the `learn` subsystem drafts a preventive rule. You accept or reject it. Accepted rules apply to every future run. Over weeks, the plugin learns your team's conventions and stops making the same class of mistake.
+
+---
+
+## Using it in an existing project
+
+If you already have a repository of engineering docs, point the plugin at it as a "source-root":
+
+1. Open `~/ObsidianVault/03-Resources/<your-base>/CLAUDE.md`
+2. Find the **Source Roots** section
+3. Add the path to your code repo, e.g.:
+   ```yaml
+   source-roots:
+     - /Users/you/work/auth-service
+     - /Users/you/work/internal-docs
+   ```
+
+Now when `correct` runs, it greps those directories to validate claims. **Accurate-but-miscited** becomes a first-class outcome: a claim about an API field that isn't in your RFC but IS in your code gets its citation fixed, not deleted.
+
+This is the single biggest quality-of-life feature for teams where docs and code drift.
+
+---
+
+## Thirteen operations (for when you're ready to go deeper)
+
+The router maps plain English onto these. You rarely need to call them directly, but they're here if you want to.
+
+| Operation | Purpose |
+|-----------|---------|
+| `init` | Scaffold a new knowledge base |
+| `migrate` | Upgrade an older base to the current schema (idempotent) |
+| `ingest` | Save a source (URL or file) — does not process yet |
+| `compile` | Read uncompiled sources, synthesise cross-linked pages, run self-critique |
+| `query` | Answer a question with `[[wikilink]]` citations |
+| `correct` | Re-ground a page against its sources and your code repos |
+| `rationale` | Extract the *why* — tradeoffs, alternatives, historical decisions |
+| `eval` | Score the base against a defined question set; track regressions |
+| `gap` | Stage open knowledge gaps from reports and follow-up prose |
+| `fetch` | Pull external sources to close open backlog items |
+| `learn` | Roll up recurring observations into proposed rules |
+| `lint` | Audit for dead links, orphan pages, missing sections |
+| `run` | Composer that chains ops into profiled pipelines (for scheduled runs) |
+| `remove` | Delete a knowledge base cleanly |
+
+Plus bundled skills:
+
+- **`/ecogo-workflow:brainstorming`** — design-first workflow with a hard gate
+- **`/ecogo-workflow:subagent-driven-development`** — execute a plan via subagents with two-stage review
+
+---
+
+## Running it on a schedule
+
+Let the plugin maintain your knowledge base overnight. In Claude Code:
+
+```
+# Daily upkeep at 3am local time
 /schedule create --cron "0 3 * * *" --prompt "/ecogo-workflow:ecogo run"
 
-# Hourly cheap tick during work hours (weekdays only)
+# Hourly lightweight check during work hours, weekdays
 /schedule create --cron "0 9-17 * * 1-5" --prompt "/ecogo-workflow:ecogo run cheap"
 
-# Weekly expensive tick Sunday morning
+# Weekly deep pass Sunday morning (eval, fetch, distill)
 /schedule create --cron "0 4 * * 0" --prompt "/ecogo-workflow:ecogo run expensive"
 ```
 
-Each trigger fires a fresh Claude Code session. The base evolves overnight without you in the loop.
+Each trigger fires a fresh Claude Code session, does the work, commits, and exits. The base compounds while you sleep.
 
-## Base layout
+---
+
+## Troubleshooting
+
+### "The slash command isn't found"
+
+Restart your Claude Code session. Plugins load at session start.
+
+### "The plugin says my base isn't at v2"
+
+You created the base before v2 schema. Run:
 
 ```
-<your-vault>/03-Resources/<name>/
-├── raw/
-│   ├── articles/          # source documents you ingested
-│   └── attachments/       # images, binaries
-├── wiki/
-│   ├── index.md           # catalog (read first)
-│   ├── queries/           # filed query answers, promotable
-│   └── <concept>.md       # entity pages
-├── outputs/
-│   ├── reports/           # dated lint + compile-critique reports
-│   ├── evals/             # questions.md + per-run judging + history
-│   ├── backlog.md         # open knowledge gaps
-│   ├── learnings-raw.jsonl
-│   ├── learnings.md       # distilled patterns + accepted rules
-│   ├── rationales/        # snapshot + deleted-hash TTL
-│   └── runs/              # per-tick reports from `run`
-├── CLAUDE.md              # schema and conventions (the base's contract)
-├── log.md                 # append-only operation history
-├── .gitignore
-└── qmd.yml                # search collection config
+/ecogo-workflow:ecogo migrate
 ```
 
-## Obsidian integration
+It's idempotent and purely additive — nothing existing will be deleted.
 
-Obsidian is the default editor because it is free, local-first, and renders markdown + wikilinks + callouts natively. You do not need to use Obsidian's UI to benefit from this plugin, but these integrations are free if you do:
+### "I got an error about qmd"
 
-- **Graph view** shows the wikilink topology — orphan pages are visually obvious
-- **Dataview** queries work across the standard frontmatter fields the plugin populates
-- **Web Clipper** saves articles directly to `raw/articles/`, ready to ingest
-- **Marp** exports any page as a slide deck with `marp: true` in frontmatter
+qmd is the search tool this plugin auto-installs. It installs on first session after the plugin is added. If it didn't, reinstall the plugin:
 
-## Search
-
-[`qmd`](https://github.com/tobilu/qmd) provides hybrid search (BM25 + vector) over wiki pages. Optional — the plugin falls back to `wiki/index.md` for small bases. qmd installs automatically via the SessionStart hook.
-
-## Source-roots — the code-grounding feature
-
-Declare one or more directories in the base's `CLAUDE.md` as source-roots:
-
-```yaml
-source-roots:
-  - /path/to/your/code-repo
-  - /path/to/your/internal-docs
+```
+/plugin install ecogo-workflow@ecogo-workflow --force
 ```
 
-Now when `correct` runs, claims that aren't in the cited wiki sources but ARE verbatim-present in a source-root directory are classified `miscited` rather than `ungrounded` — the citation gets fixed, the claim stays. This is the difference between a documentation tool that deletes accurate engineering knowledge because its paperwork was incomplete, and one that respects the fact that in real teams the code and the docs are often the same truth from different angles.
+Then restart your session.
+
+### "I'm on Windows and paths look weird"
+
+The plugin uses tilde (`~`) expansion for home paths, which works on both Mac and Windows PowerShell. If you see a path error, use the full form:
+
+- Mac: `/Users/<you>/ObsidianVault/03-Resources/<base>/`
+- Windows: `C:\Users\<you>\ObsidianVault\03-Resources\<base>\`
+
+### "My vault isn't under git"
+
+Some features commit to your vault for history. If `~/ObsidianVault` isn't a git repo, those commit steps silently skip — the plugin still works, you just don't get the git diff trail. To add it:
+
+```bash
+cd ~/ObsidianVault
+git init
+git add .
+git commit -m "initial commit"
+```
+
+### "The plugin is doing too much / too little"
+
+Look at your `~/ObsidianVault/03-Resources/<base>/outputs/learnings.md`. You'll see proposed rules from the `learn` subsystem. Accept the ones that match your preferences, reject the ones that don't. The plugin progressively tunes to your style.
+
+---
+
+## What's inside (architecture, for the curious)
+
+- **13 operations** covering the knowledge-base lifecycle
+- **Natural-language router** that maps plain English onto ops and bundled skills
+- **Self-critique loop** inside `compile` — bounded 3-iteration, catches fabrication at creation time
+- **Three-way grounding** in `correct` (grounded / miscited / ungrounded / contradicted) with source-roots fallback
+- **Learning subsystem** — observations → proposed rules → user accept → runtime overlay → schema promotion
+- **Rationale extraction** — regex pre-pass + LLM judge + promote-to-entity clustering; tradeoff / alternative / historical / gotcha classification
+- **Model routing policy** — Haiku for mechanical work, Sonnet for standard, Opus for deep reasoning
+- **Effort-mode awareness** — degrades gracefully in Claude Code's fast mode; full discipline in extended-thinking mode
+
+Full technical details live in the skill file at `skills/ecogo/SKILL.md`.
+
+---
 
 ## Status
 
-- `v0.2.0` — thirteen operations, natural-language router, self-critique loop, learning subsystem, scheduled runs, rationale extraction with tradeoff/alternative/historical/gotcha classification
-- Golden test harness in `tests/rationales/` — reproducible per-page precision/recall gating (tolerant YAML comparator, shipping-bar thresholds)
+- `v0.2.0` — current release with intelligent skill orchestration, model routing, self-improvement loop
+- MIT-licensed
 - Bundles the `brainstorming` and `subagent-driven-development` skills from [superpowers](https://github.com/obra/superpowers) (MIT © Jesse Vincent)
 
 ## Contributing
 
-Issues and PRs welcome. This plugin is young and every real-world use case surfaces a new signal to tune.
+Issues and PRs welcome. Every real-world use case surfaces a new signal to tune.
 
 ## License
 
