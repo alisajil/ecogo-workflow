@@ -14,6 +14,14 @@ The license text travels with the skill at `skills/brainstorming/LICENSE`.
 
 This skill is included so `/ecogo-workflow:brainstorming` is available without requiring a separate plugin install. All credit for the brainstorming methodology, prompt design, and workflow goes to Jesse Vincent.
 
+### `skills/subagent-driven-development/`
+
+Bundled unmodified. Copyright © 2025 Jesse Vincent. MIT License.
+Original source: https://github.com/obra/superpowers
+The license text travels with the skill at `skills/subagent-driven-development/LICENSE`.
+
+This skill is included so `/ecogo-workflow:subagent-driven-development` is available for executing implementation plans via per-task subagents with two-stage review (spec compliance then code quality). All credit for the subagent-driven development methodology, prompt templates, and review loops goes to Jesse Vincent.
+
 ## External tooling
 
 Obsidian, qmd, and Marp are external tools this plugin integrates with. They are independent open-source projects and are credited through their own licenses and release notes.

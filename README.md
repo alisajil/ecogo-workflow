@@ -50,9 +50,13 @@ Every claim on a wiki page traces back to a cited source. When a page looks wron
 
 Plus a **natural-language router** — `/eco go <whatever you want in English>` — that maps plain language onto the right op.
 
-## Bundled `brainstorming` skill
+## Bundled workflow skills
 
-Before you build a new feature, run `/ecogo-workflow:brainstorming` to walk the idea from one-line intent through a clarifying dialogue, approach tradeoffs, design document, self-review, and a written spec you can then feed to implementation. The skill enforces a hard gate: no code gets written until the design has been approved. This is the single highest-leverage habit for avoiding wasted engineering work in unfamiliar problem spaces.
+Two skills are bundled so the design-to-execution pipeline is available out of the box — no separate plugin install. Both are MIT-licensed redistributions from the superpowers plugin by Jesse Vincent. See [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) for credit and license.
+
+### `/ecogo-workflow:brainstorming`
+
+Before you build a new feature, run this to walk the idea from one-line intent through clarifying dialogue, approach tradeoffs, a design document, self-review, and a written spec. The skill enforces a hard gate: **no code gets written until the design has been approved**. The single highest-leverage habit for avoiding wasted engineering work in unfamiliar problem spaces.
 
 ```
 /ecogo-workflow:brainstorming add RBAC to the admin portal
@@ -60,7 +64,11 @@ Before you build a new feature, run `/ecogo-workflow:brainstorming` to walk the 
 /ecogo-workflow:brainstorming refactor the rate limiter into a standalone library
 ```
 
-Third-party bundled skill — see [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) for credit.
+### `/ecogo-workflow:subagent-driven-development`
+
+Executes a written implementation plan by dispatching a fresh subagent per task, reviewing the output in two passes (spec compliance then code quality), and looping fixes until both reviews approve. Keeps your own session context clean while work proceeds; catches scope drift, missing requirements, and quality issues before they compound.
+
+Natural pipeline: `brainstorming` produces a spec → you hand it to the writing-plans convention → `subagent-driven-development` executes each task with review gates.
 
 ## Quick start
 
@@ -196,7 +204,7 @@ Now when `correct` runs, claims that aren't in the cited wiki sources but ARE ve
 
 - `v0.1.0` — thirteen operations, natural-language router, self-critique loop, learning subsystem, scheduled runs, rationale extraction with tradeoff/alternative/historical/gotcha classification
 - Golden test harness in `tests/rationales/` — reproducible per-page precision/recall gating (tolerant YAML comparator, shipping-bar thresholds)
-- Bundles the `brainstorming` skill from [superpowers](https://github.com/obra/superpowers) (MIT © Jesse Vincent)
+- Bundles the `brainstorming` and `subagent-driven-development` skills from [superpowers](https://github.com/obra/superpowers) (MIT © Jesse Vincent)
 
 ## Contributing
 
