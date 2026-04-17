@@ -1,0 +1,8 @@
+# Control page — expected_count: 0 means NO rationales should be extracted.
+# A homepage-style wiki entry (navigation, links, no decisions). If the
+# extractor produces any rationales here, it's a false positive regression.
+# This file is intentionally minimal — the run-golden.sh harness detects
+# the `expected_count: 0` marker and switches into control-page mode
+# without invoking the LLM at all.
+
+expected_count: 0

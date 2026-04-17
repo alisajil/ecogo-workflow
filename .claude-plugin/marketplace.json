@@ -1,0 +1,14 @@
+{
+  "name": "ecogo-workflow",
+  "owner": {
+    "name": "alisajil",
+    "url": "https://github.com/alisajil"
+  },
+  "plugins": [
+    {
+      "name": "ecogo-workflow",
+      "source": "./",
+      "description": "Self-correcting engineering knowledge base for software teams. ADRs, runbooks, onboarding docs that stay synced with code. Natural-language commands, code-grounded self-correction, rationale extraction, learning-from-mistakes, scheduled runs."
+    }
+  ]
+}

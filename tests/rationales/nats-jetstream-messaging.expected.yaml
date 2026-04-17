@@ -1,0 +1,11 @@
+# Target: wiki/nats-jetstream-messaging.md
+
+- text_contains:
+    - "async"
+  kind: tradeoff
+  min_confidence: low
+
+- text_contains:
+    - "persist"
+  kind: alternative
+  min_confidence: low

@@ -1,0 +1,13 @@
+# Target: wiki/microservices-architecture.md
+# Architectural umbrella page — expect decomposition + communication
+# rationale (gRPC over HTTP, async messaging, boundary choices).
+
+- text_contains:
+    - "service"
+  kind: tradeoff
+  min_confidence: low
+
+- text_contains:
+    - "gRPC"
+  kind: alternative
+  min_confidence: low

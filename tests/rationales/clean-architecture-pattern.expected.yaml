@@ -1,0 +1,13 @@
+# Target: wiki/clean-architecture-pattern.md
+# Cited sources may vary; expectations are deliberately loose (low min_confidence)
+# so the harness tolerates LLM verbosity.
+
+- text_contains:
+    - "decoupl"
+  kind: tradeoff
+  min_confidence: medium
+
+- text_contains:
+    - "test"
+  kind: tradeoff
+  min_confidence: low

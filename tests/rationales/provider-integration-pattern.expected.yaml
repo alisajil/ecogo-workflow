@@ -1,0 +1,22 @@
+# Golden expectation for wiki/provider-integration-pattern.md
+# A concept page describing how the knowledge base integrates with an
+# external provider via an adapter pattern. Cited sources are the
+# provider's documentation and the adapter's checklist.
+
+- text_contains:
+    - "fewer"
+    - "faster"
+  kind: tradeoff
+  min_confidence: medium
+  source_contains:
+    - "configuration"
+
+- text_contains:
+    - "default"
+  kind: alternative
+  min_confidence: low
+
+- text_contains:
+    - "session"
+  kind: historical
+  min_confidence: low
