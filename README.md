@@ -50,6 +50,18 @@ Every claim on a wiki page traces back to a cited source. When a page looks wron
 
 Plus a **natural-language router** — `/eco go <whatever you want in English>` — that maps plain language onto the right op.
 
+## Bundled `brainstorming` skill
+
+Before you build a new feature, run `/ecogo-workflow:brainstorming` to walk the idea from one-line intent through a clarifying dialogue, approach tradeoffs, design document, self-review, and a written spec you can then feed to implementation. The skill enforces a hard gate: no code gets written until the design has been approved. This is the single highest-leverage habit for avoiding wasted engineering work in unfamiliar problem spaces.
+
+```
+/ecogo-workflow:brainstorming add RBAC to the admin portal
+/ecogo-workflow:brainstorming we need a retry strategy for the upload service
+/ecogo-workflow:brainstorming refactor the rate limiter into a standalone library
+```
+
+Third-party bundled skill — see [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) for credit.
+
 ## Quick start
 
 ```bash
@@ -184,6 +196,7 @@ Now when `correct` runs, claims that aren't in the cited wiki sources but ARE ve
 
 - `v0.1.0` — thirteen operations, natural-language router, self-critique loop, learning subsystem, scheduled runs, rationale extraction with tradeoff/alternative/historical/gotcha classification
 - Golden test harness in `tests/rationales/` — reproducible per-page precision/recall gating (tolerant YAML comparator, shipping-bar thresholds)
+- Bundles the `brainstorming` skill from [superpowers](https://github.com/obra/superpowers) (MIT © Jesse Vincent)
 
 ## Contributing
 
