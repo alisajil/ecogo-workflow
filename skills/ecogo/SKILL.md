@@ -78,6 +78,67 @@ MARP="${CLAUDE_PLUGIN_DATA}/node_modules/.bin/marp"
 
 ---
 
+## Model Selection and Token Budget
+
+Every op in this plugin operates in Claude Code. Picking the right model per task and keeping context lean is the difference between a plugin that feels fast and one that feels bloated. This section is the policy — each op references it when deciding how to behave.
+
+### Model choice per task class
+
+Use the cheapest model that can do the job well. Claude Code exposes three capable models; pick by task kind, not by mood:
+
+| Task kind | Model | Why |
+|-----------|-------|-----|
+| Observation emission, frontmatter updates, regex pre-pass, log append, slug generation, yes/no gates, metadata lookups, file-existence checks | **Haiku 4.5** | Fast, cheap, high accuracy on mechanical work. |
+| Compile synthesis, source-summary writing, query answer drafting, LLM judge in rationale extraction, correct grounding pass, learn distill roll-up, fetch filtering, eval judge pass | **Sonnet 4.6** | Standard work. Good at structured prose with citations. |
+| Brainstorming design dialogue, learn proposed-rule drafting, correct contradiction resolution, critique-loop regression diagnosis, cross-page rationale contradiction resolution, architectural ADR authoring | **Opus 4.7** | Deep reasoning. Reserved for tasks where a wrong call costs the user hours. |
+
+When dispatching a subagent, always pass the `model` parameter explicitly (e.g., `Agent(model="haiku", ...)`). When staying in the main session, defer to the session's current model — but announce when an op expects Opus-grade reasoning so the user can switch if they prefer cheaper.
+
+### Token-budget discipline
+
+Hard rules, not aspirations:
+
+- **Don't re-read `SKILL.md` mid-op.** It loads once per session and stays in context. Ops rely on the loaded version.
+- **Don't re-read the base's `CLAUDE.md` unless state changed.** Cache it across ops in a run.
+- **Use qmd for retrieval, not full-file sweeps.** qmd returns ranked paths; read only the top-N.
+- **Batch observation emissions.** Collect into a list during an op, write once at the end. Never one-line-at-a-time appends.
+- **`log.md` entries are one header + one sentence.** Operational history is a time series, not a narrative.
+- **Run reports cap at 200 lines.** Detail goes to per-step artifacts. Summaries stay scannable.
+- **LLM judge prompts carry the source window + claim + rubric only.** Not the whole SKILL.md. Not the whole page.
+
+### Response brevity
+
+Announce-and-do, not announce-explain-do:
+
+- Default ops (`compile`, `lint`, `eval`) emit a one-line status plus the structured artifact. No preamble.
+- Decision-ladder routes announce the branch (`"Base idle. Running lint — last lint 9 days old."`) then run.
+- Verbose output is opt-in: `eco go explain what you did` produces prose; `eco go` produces action.
+- The critique loop and learn distill print final-state summaries only. Per-iteration detail goes to the report file, not the user's console.
+
+### Effort-mode awareness (Claude Code specifically)
+
+Claude Code has a user-toggleable extended-thinking mode plus per-session `/fast` and `/effort` controls. The plugin adapts:
+
+- **Fast mode** (Opus 4.6 fast, or standard Sonnet without extended thinking): drop the critique loop from 3 iterations to 1; lower the compile step 3.5 LLM budget from 100 → 40 calls; accept medium-confidence rationales without a second read; postpone learn distill until ≥ 15 observations have accumulated.
+- **Standard extended-thinking** (default): full discipline — bounded 3-iteration critique, 100-LLM-call budget, confidence rubric enforced.
+- **Opus explicitly selected**: allow longer chains (full brainstorm → plan → execute in one session), deeper grounding passes, cross-page consistency analysis, cross-wiki rationale reconciliation.
+
+If the plugin detects fast mode and the user asks for deep work (e.g., "take this idea to production", "design and implement X from scratch"), **suggest toggling extended thinking** before proceeding. Do not silently degrade quality for a request that needs it.
+
+### Per-profile model policy for `ecogo run`
+
+- `run cheap` — Haiku only. Compile + lint + frontmatter. No LLM judge, no brainstorming, no subagent-driven-development.
+- `run default` — Mixed per the table above. Most work is Sonnet; observation emissions are Haiku; any proposed-rule drafting during learn is Opus.
+- `run expensive` — Sonnet baseline with Opus escalation on correct contradictions, deep critique regressions, and cross-page conflict reconciliation.
+- `run canary` — Haiku (smoke test; doesn't need quality, needs signal that the scheduler fires).
+
+Accepted-learnings rules can tune these defaults per wiki. Examples a user might approve over time:
+- *"Always use Haiku for initial compile synthesis; escalate to Sonnet only when self-critique finds issues."*
+- *"For rationale extraction on sources > 10KB, use Sonnet judge; smaller sources use Haiku."*
+- *"Default the query op to Haiku for first-pass retrieval; escalate to Sonnet only if the user says 'explain' or 'why'."*
+
+---
+
 ## Learning Subsystem
 
 The wiki records recurring issues it encounters and uses them to evolve its own behavior over time. Two files back this:

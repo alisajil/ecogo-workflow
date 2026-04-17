@@ -215,7 +215,7 @@ Now when `correct` runs, claims that aren't in the cited wiki sources but ARE ve
 
 ## Status
 
-- `v0.1.0` — thirteen operations, natural-language router, self-critique loop, learning subsystem, scheduled runs, rationale extraction with tradeoff/alternative/historical/gotcha classification
+- `v0.2.0` — thirteen operations, natural-language router, self-critique loop, learning subsystem, scheduled runs, rationale extraction with tradeoff/alternative/historical/gotcha classification
 - Golden test harness in `tests/rationales/` — reproducible per-page precision/recall gating (tolerant YAML comparator, shipping-bar thresholds)
 - Bundles the `brainstorming` and `subagent-driven-development` skills from [superpowers](https://github.com/obra/superpowers) (MIT © Jesse Vincent)
 

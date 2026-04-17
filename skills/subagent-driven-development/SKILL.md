@@ -7,7 +7,7 @@ description: Use when executing implementation plans with independent tasks in t
 Bundled skill. © 2025 Jesse Vincent. MIT License.
 See skills/subagent-driven-development/LICENSE for the full license text.
 Original source: https://github.com/obra/superpowers
-Bundled unmodified in ecogo-workflow v0.1.0.
+Bundled unmodified in ecogo-workflow v0.2.0.
 -->
 
 # Subagent-Driven Development

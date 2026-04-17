@@ -7,7 +7,7 @@ description: "You MUST use this before any creative work - creating features, bu
 Bundled skill. © 2025 Jesse Vincent. MIT License.
 See skills/brainstorming/LICENSE for the full license text.
 Original source: https://github.com/obra/superpowers
-Bundled unmodified in ecogo-workflow v0.1.0.
+Bundled unmodified in ecogo-workflow v0.2.0.
 -->
 
 # Brainstorming Ideas Into Designs
