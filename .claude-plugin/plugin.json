@@ -1,6 +1,6 @@
 {
   "name": "ecogo-workflow",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Self-correcting engineering knowledge base for software teams. Captures architectural decisions, tradeoffs, and runbooks. Keeps docs synced with the code they describe. Natural-language commands, self-correction against source-roots, rationale extraction, learning-from-mistakes subsystem, scheduled runs.",
   "author": {
     "name": "Ali Sajil",

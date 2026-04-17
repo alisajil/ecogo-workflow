@@ -5,11 +5,11 @@
 You talk to it in plain English. It does the rest.
 
 ```
-eco go save https://my-rfc.example.com         ← feed it an RFC
-eco go how does our auth flow work?             ← get an answer with citations
-eco go the deployment runbook looks wrong       ← it re-grounds against your code
-eco go design a rate limiter                    ← walks you through a proper design
-eco go build me an auth service from scratch    ← design → plan → implementation
+ecogo save https://my-rfc.example.com         ← feed it an RFC
+ecogo how does our auth flow work?             ← get an answer with citations
+ecogo the deployment runbook looks wrong       ← it re-grounds against your code
+ecogo design a rate limiter                    ← walks you through a proper design
+ecogo build me an auth service from scratch    ← design → plan → implementation
 ```
 
 ---
@@ -105,7 +105,7 @@ Then restart your Claude Code session to pick up the new commands.
 Start a fresh session in Claude Code and type:
 
 ```
-/eco go
+/ecogo
 ```
 
 If you see a friendly "Base is idle. Nothing urgent." with a list of suggested next actions — you're set. Skip to **Your first 15 minutes** below.
@@ -184,7 +184,7 @@ Then restart your Claude Code session.
 Start a fresh session and type:
 
 ```
-/eco go
+/ecogo
 ```
 
 If it responds with "Base is idle" — you're good.
@@ -200,7 +200,7 @@ A guided walkthrough. Replace `auth-platform` with whatever topic you care about
 In Claude Code:
 
 ```
-/eco go start a new knowledge base called auth-platform
+/ecogo start a new knowledge base called auth-platform
 ```
 
 This creates `~/ObsidianVault/03-Resources/auth-platform/` with folders for raw sources, wiki pages, reports, and a schema file. Open that folder in Obsidian if you want to see the structure.
@@ -210,7 +210,7 @@ This creates `~/ObsidianVault/03-Resources/auth-platform/` with folders for raw 
 Any URL or file. An RFC, a design doc, a Notion page, a GitHub README, a meeting transcript. Let's use a web source:
 
 ```
-/eco go save https://raw.githubusercontent.com/golang/go/master/doc/README.md
+/ecogo save https://raw.githubusercontent.com/golang/go/master/doc/README.md
 ```
 
 This downloads the content to `raw/articles/` — it's not processed yet.
@@ -226,7 +226,7 @@ The plugin reads the raw source, writes a summary page, extracts the interesting
 ### Step 4 — Ask a question
 
 ```
-/eco go tell me about the Go documentation structure
+/ecogo tell me about the Go documentation structure
 ```
 
 You get back an answer with `[[wikilinks]]` — those are clickable in Obsidian and trace every claim back to the source you ingested. Every non-trivial factual claim is grounded.
@@ -234,7 +234,7 @@ You get back an answer with `[[wikilinks]]` — those are clickable in Obsidian 
 ### Step 5 — Check it
 
 ```
-/eco go audit the engineering docs
+/ecogo audit the engineering docs
 ```
 
 This runs the lint check — looks for broken links, orphan pages, missing sections. For a tiny base this should pass cleanly; you'll see results accumulate as the base grows.
@@ -242,7 +242,7 @@ This runs the lint check — looks for broken links, orphan pages, missing secti
 ### Step 6 — Do the smart thing
 
 ```
-/eco go
+/ecogo
 ```
 
 With no arguments, the plugin looks at the current state and picks the most useful action: compile if there's uncompiled raw material, lint if it's been a while, distill observations if the subsystem has new ones to roll up, etc. It announces what it's doing before doing it.
@@ -254,15 +254,15 @@ With no arguments, the plugin looks at the current state and picks the most usef
 ### "I just wrote an RFC and I want it integrated"
 
 ```
-/eco go save ~/work/rfcs/2026-04-auth-rotation.md
+/ecogo save ~/work/rfcs/2026-04-auth-rotation.md
 /ecogo-workflow:ecogo compile
-/eco go
+/ecogo
 ```
 
 ### "I'm starting a new feature and want a proper design first"
 
 ```
-/eco go design an RBAC layer for the admin portal
+/ecogo design an RBAC layer for the admin portal
 ```
 
 This invokes the `brainstorming` skill. It asks clarifying questions one at a time, proposes 2-3 approaches with tradeoffs, writes a design spec, and hands it off to the plan skill. **It won't let you skip to code until you approve the design** — this is by design.
@@ -270,7 +270,7 @@ This invokes the `brainstorming` skill. It asks clarifying questions one at a ti
 ### "I have a written plan and want to execute it"
 
 ```
-/eco go implement the plan at docs/plans/rbac-plan.md
+/ecogo implement the plan at docs/plans/rbac-plan.md
 ```
 
 This invokes `subagent-driven-development`. It dispatches a fresh sub-agent per task, reviews the output in two passes (did they build what was asked? is the code good?), loops fixes until both gates pass, then moves to the next task.
@@ -278,7 +278,7 @@ This invokes `subagent-driven-development`. It dispatches a fresh sub-agent per 
 ### "I think the docs are out of date"
 
 ```
-/eco go the deployment runbook looks wrong
+/ecogo the deployment runbook looks wrong
 ```
 
 The plugin re-reads the cited sources, checks claims against your declared code directories (source-roots), and:
@@ -426,7 +426,7 @@ Full technical details live in the skill file at `skills/ecogo/SKILL.md`.
 
 ## Status
 
-- `v0.2.0` — current release with intelligent skill orchestration, model routing, self-improvement loop
+- `v0.3.0` — current release with intelligent skill orchestration, model routing, self-improvement loop
 - MIT-licensed
 - Bundles the `brainstorming` and `subagent-driven-development` skills from [superpowers](https://github.com/obra/superpowers) (MIT © Jesse Vincent)
 

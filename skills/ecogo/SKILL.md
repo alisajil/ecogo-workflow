@@ -2,14 +2,14 @@
 name: ecogo
 description: >-
   ecogo-workflow — self-improving, compounding knowledge base inside Obsidian.
-  Use when the user says "/ecogo-workflow:ecogo", "/eco", "eco go", "ecogo init",
+  Use when the user says "/ecogo-workflow:ecogo", "/ecogo", "ecogo", "ecogo init",
   "ecogo migrate", "ecogo ingest", "ecogo query", "ecogo correct", "ecogo eval",
   "ecogo gap", "ecogo fetch", "ecogo learn", "ecogo lint", "ecogo run", "ecogo rationale",
   or asks about managing a knowledge base. ALSO use when the user asks plain
   questions that imply workflow operations: "is this page wrong?", "fix the
   base", "what's out of date?", "save this article", "tell me about X",
   "what should I work on next?".
-argument-hint: init <name> | migrate [--dry-run] | ingest <path|url> | compile [<path>] | query <question> | correct <page-slug> [<claim>] | rationale [<subcmd>] | eval [<question>] | gap [<question>] | fetch [<gap-id|question>] | learn [<subcmd>] | lint | run [<profile>] | remove <name> | (plain English via "eco go ...")
+argument-hint: init <name> | migrate [--dry-run] | ingest <path|url> | compile [<path>] | query <question> | correct <page-slug> [<claim>] | rationale [<subcmd>] | eval [<question>] | gap [<question>] | fetch [<gap-id|question>] | learn [<subcmd>] | lint | run [<profile>] | remove <name> | (plain English via "ecogo ...")
 ---
 
 # ecogo-workflow
@@ -35,12 +35,12 @@ Self-improving, compounding knowledge base inside an Obsidian vault.
 /ecogo-workflow:ecogo run
 
 # Friendly entry — no op names required
-/eco go                                     # do the smart thing for current state
-/eco go tell me about the auth flow           # → query
-/eco go the deployment runbook looks out of date     # → correct (after slug resolution)
-/eco go save this RFC <url>             # → ingest
-/eco go audit the engineering docs                      # → lint
-/eco go what should I work on               # → print open backlog items
+/ecogo                                     # do the smart thing for current state
+/ecogo tell me about the auth flow           # → query
+/ecogo the deployment runbook looks out of date     # → correct (after slug resolution)
+/ecogo save this RFC <url>             # → ingest
+/ecogo audit the engineering docs                      # → lint
+/ecogo what should I work on               # → print open backlog items
 
 ```
 
@@ -112,7 +112,7 @@ Announce-and-do, not announce-explain-do:
 
 - Default ops (`compile`, `lint`, `eval`) emit a one-line status plus the structured artifact. No preamble.
 - Decision-ladder routes announce the branch (`"Base idle. Running lint — last lint 9 days old."`) then run.
-- Verbose output is opt-in: `eco go explain what you did` produces prose; `eco go` produces action.
+- Verbose output is opt-in: `ecogo explain what you did` produces prose; `ecogo` produces action.
 - The critique loop and learn distill print final-state summaries only. Per-iteration detail goes to the report file, not the user's console.
 
 ### Effort-mode awareness (Claude Code specifically)
@@ -243,9 +243,9 @@ The `ecogo migrate` op includes `<!-- ecogo-migrate: v2 applied YYYY-MM-DD -->` 
 
 ## Natural-Language Routing
 
-When the skill is invoked via `/eco go`, via `eco go ...` in a user message, or with no subcommand at all (bare `/ecogo-workflow:ecogo`), do **not** assume a specific op. Route based on intent using the logic below.
+When the skill is invoked via `/ecogo`, via `ecogo ...` in a user message, or with no subcommand at all (bare `/ecogo-workflow:ecogo`), do **not** assume a specific op. Route based on intent using the logic below.
 
-### Default action (invoked without free text: `eco go` alone)
+### Default action (invoked without free text: `ecogo` alone)
 
 Run the first applicable branch of this decision ladder. Announce which branch fired before doing the work: `"Base state: <reason>. Running <op>."`
 
@@ -256,9 +256,9 @@ Run the first applicable branch of this decision ladder. Announce which branch f
 5. **Backlog has ≥ 1 open item with priority `high`** → `ecogo fetch` (top high-priority item).
 6. **New observations since last distill** (`outputs/learnings-raw.jsonl` modified after last `## [YYYY-MM-DD] learn` in `log.md`) → `ecogo learn`.
 7. **Proposed learnings pending user review** (entries in `outputs/learnings.md` under `## Proposed`) → surface the top 3 with one-line summaries and ask user to accept/reject. Do not auto-accept.
-8. **None of the above** → print `"Base is idle. Nothing urgent."` plus a friendly list of what the user could do: seed eval questions if placeholders remain, ingest a source, run `ecogo eval` for a fresh baseline, start a design with `eco go design <topic>`, etc. Do NOT run any op.
+8. **None of the above** → print `"Base is idle. Nothing urgent."` plus a friendly list of what the user could do: seed eval questions if placeholders remain, ingest a source, run `ecogo eval` for a fresh baseline, start a design with `ecogo design <topic>`, etc. Do NOT run any op.
 
-### Free-text routing (`eco go <free text>`)
+### Free-text routing (`ecogo <free text>`)
 
 Classify the free text against the intent table. If a row matches confidently, invoke the routed op with the extracted arguments. If no row matches confidently or the action is destructive, ask a short clarifying question first.
 
@@ -370,15 +370,15 @@ When asked "help" or "what can you do", print something like:
 > - **Learn from itself** — every op emits observations. Recurring patterns become proposed rules you accept or reject. Accepted rules apply to every future run.
 >
 > **Most-used triggers:**
-> - `eco go` — do the smart thing for current state
-> - `eco go <question>` — look something up (memory-first)
-> - `eco go fix <page name>` — correct a page
-> - `eco go save <url>` — ingest a source
-> - `eco go design <feature>` — start a brainstorm
-> - `eco go build me <feature> from scratch` — full chained workflow
-> - `eco go audit the engineering docs` — lint
-> - `eco go what should I work on` — show backlog
-> - `eco go` (alone, on a cron) — autonomous upkeep tick
+> - `ecogo` — do the smart thing for current state
+> - `ecogo <question>` — look something up (memory-first)
+> - `ecogo fix <page name>` — correct a page
+> - `ecogo save <url>` — ingest a source
+> - `ecogo design <feature>` — start a brainstorm
+> - `ecogo build me <feature> from scratch` — full chained workflow
+> - `ecogo audit the engineering docs` — lint
+> - `ecogo what should I work on` — show backlog
+> - `ecogo` (alone, on a cron) — autonomous upkeep tick
 
 ---
 
@@ -785,7 +785,7 @@ Not a substitute for `compile` (which brings in new material) or `fetch` (which 
 1. **Detect active wiki.** Read `CLAUDE.md`. Read `outputs/learnings.md` accepted rules per the **Learning Subsystem → Accepted-rules overlay**.
 
 2. **Resolve target:**
-   - `<page-slug>` is required. Open `wiki/<page-slug>.md` (check `wiki/queries/<page-slug>.md` too if the main path misses). If still missing, abort: `"Page not found at wiki/<slug>.md or wiki/queries/<slug>.md. Use 'eco go tell me about X' or 'ecogo query' to locate the right slug first."`
+   - `<page-slug>` is required. Open `wiki/<page-slug>.md` (check `wiki/queries/<page-slug>.md` too if the main path misses). If still missing, abort: `"Page not found at wiki/<slug>.md or wiki/queries/<slug>.md. Use 'ecogo tell me about X' or 'ecogo query' to locate the right slug first."`
    - `<specific-claim>` (optional): free-text naming the claim in question. When provided, scope correction to sentences and nearby context that address this claim. When absent, audit the whole page.
 
 3. **Identify cited sources.** Read the page's `## Sources` or `## Entities Mentioned` section. Collect:
@@ -829,7 +829,7 @@ Not a substitute for `compile` (which brings in new material) or `fetch` (which 
 
    | Outcome | Action |
    |---------|--------|
-   | All non-trivial claims grounded | **Report:** `"No correction needed — page claims all trace to cited sources. If you believe the page is wrong, the cited sources themselves may be stale. Run 'eco go find info about <topic>' to pull fresh sources, then 'ecogo compile' to integrate."` |
+   | All non-trivial claims grounded | **Report:** `"No correction needed — page claims all trace to cited sources. If you believe the page is wrong, the cited sources themselves may be stale. Run 'ecogo find info about <topic>' to pull fresh sources, then 'ecogo compile' to integrate."` |
    | Some claims `miscited` (accurate per source-roots but not per cited sources) | **Add the discovered source file to the page's `## Sources` section** with a short label (`<path> (<topic>, lines X-Y)`). Do NOT delete the claim — it's accurate, the citation was just incomplete. Offer the user: `"Shall I also ingest <path> as a proper source-summary so future compiles use it?"` |
    | Some claims ungrounded (nothing in cited sources OR in source-roots), none contradicted | Remove each ungrounded claim sentence-by-sentence. Preserve surrounding grounded prose. Do NOT rephrase or invent replacements. |
    | Some claims contradicted | Replace the contradicted claim with the source-supported version. Preserve the surrounding prose. Quote the contradicting source excerpt in a `> [!NOTE] Corrected 2026-04-17 from [[source-slug]]` callout adjacent to the correction so provenance is visible. |
@@ -1595,8 +1595,8 @@ Handle these failure modes gracefully:
 | **`correct` on a page with no `## Sources` section** | Abort with suggestion to re-ingest+compile or delete the page. Do not attempt grounding without explicit sources — risks inventing citations. |
 | **`correct` requests a correction that would require fabricating a replacement** | Remove the claim instead. Never synthesize a substitute. Emit `manual-correction` with `action: removed (no replacement available)`. |
 | **`correct` called repeatedly on the same page with no change** (2+ times in 30 days) | Surface a `correction-declined` pattern in `learn`. Proposed rule: "When user repeatedly corrects <page> but all claims ground, the sources are likely stale — suggest `ecogo fetch` for the topic." |
-| **`eco go <free text>` cannot be classified to any intent** | Ask the user: "Did you want to (1) look something up, (2) fix something, (3) save new info, (4) audit the engineering docs, (5) something else?" Emit `route-ambiguous`. Never guess on destructive routes. |
-| **`eco go` default-action ladder picks an op the user didn't want** | The ladder announces the branch before acting. If the user says "no, not that" in the same turn, abandon the action. If the action already ran and produced changes, those are committed — the user can revert via git or the op's own reverse action. |
+| **`ecogo <free text>` cannot be classified to any intent** | Ask the user: "Did you want to (1) look something up, (2) fix something, (3) save new info, (4) audit the engineering docs, (5) something else?" Emit `route-ambiguous`. Never guess on destructive routes. |
+| **`ecogo` default-action ladder picks an op the user didn't want** | The ladder announces the branch before acting. If the user says "no, not that" in the same turn, abandon the action. If the action already ran and produced changes, those are committed — the user can revert via git or the op's own reverse action. |
 
 ---
 
