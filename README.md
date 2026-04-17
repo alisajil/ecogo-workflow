@@ -3,11 +3,14 @@
 **A self-correcting engineering knowledge base for software teams.** Capture architectural decisions, tradeoffs, and runbooks. Keep them synced with the code they describe. Onboard engineers, explain legacy, track post-mortems — all from natural-language commands in Claude Code.
 
 ```
-eco go save https://my-rfc.example.com       # ingest an RFC
-eco go how does our auth flow work?           # answered with citations
-eco go the deployment runbook looks wrong     # re-ground against sources
-eco go what should I work on next             # see open backlog
-eco go audit the engineering docs             # find drift, broken refs, stale pages
+eco go save https://my-rfc.example.com         # ingest an RFC
+eco go how does our auth flow work?             # answered with citations (memory-first)
+eco go the deployment runbook looks wrong       # re-ground against sources + code
+eco go design a rate limiter                    # invokes the brainstorming skill
+eco go build me an auth service from scratch    # chains design → plan → subagent execute
+eco go what should I work on next               # see open backlog
+eco go audit the engineering docs               # find drift, broken refs, stale pages
+eco go                                          # do whatever's most useful right now
 ```
 
 ## What it's for
@@ -29,6 +32,10 @@ ecogo-workflow is a workflow for building that knowledge in a place it can compo
 
 Every claim on a wiki page traces back to a cited source. When a page looks wrong, `correct` grounds it — strictly for API names, versions, endpoints, and numeric thresholds (must appear verbatim in the source); loosely for interpretive prose. If a claim isn't in the cited source but is in a declared code repository ("source-root"), the citation is fixed rather than the claim deleted. The plugin treats "accurate but miscited" as a first-class outcome — which is a huge proportion of real-world engineering documentation.
 
+### How it improves itself
+
+Every operation the plugin runs emits observations to an append-only log. `learn` distils recurring observations into named patterns; once a pattern crosses a threshold (default ≥ 5 observations in 30 days), the subsystem drafts a proposed rule. You accept or reject. Accepted rules become a runtime overlay read by every subsequent operation — no skill edits required. Promoted rules become permanent schema in the base's `CLAUDE.md`. Over weeks, the plugin learns *your* conventions (which rationale kinds you delete most, which source paths deserve auto-ingestion, which pages are high-signal) and bends its behaviour around them. See `ecogo learn` for the full lifecycle.
+
 ## Thirteen operations
 
 | Operation | Purpose |
@@ -48,7 +55,13 @@ Every claim on a wiki page traces back to a cited source. When a page looks wron
 | `run` | Composer that chains ops into profiled pipelines (default / cheap / expensive / canary) for scheduled runs |
 | `remove` | Delete a knowledge base cleanly |
 
-Plus a **natural-language router** — `/eco go <whatever you want in English>` — that maps plain language onto the right op.
+Plus a **natural-language router** — `/eco go <whatever you want in English>` — that maps plain language onto the right op **or bundled skill**. The router orchestrates all capabilities intelligently:
+
+- **Retrieval intent** ("how did we decide X", "what is Y") → checks filed query answers, then past conversations via `episodic-memory:search-conversations` (if installed), then the base's own `query` op — whichever has the answer first.
+- **Design intent** ("design X", "new feature Y") → routes to the bundled `brainstorming` skill. Its hard-gate ("no code until approved") is never skipped.
+- **Execution intent** ("build it", "implement the plan") → routes to the bundled `subagent-driven-development` skill. Fresh subagent per task with two-stage review.
+- **Chained intent** ("build me X from scratch") → chains design → plan → execute, with a user approval gate at each link.
+- **Upkeep intent** (bare `eco go`) → the decision ladder runs the most useful op for current state: compile uncompiled sources, lint if stale, eval if stale, distill observations if new ones have accumulated, etc.
 
 ## Bundled workflow skills
 

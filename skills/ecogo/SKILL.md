@@ -186,7 +186,7 @@ When the skill is invoked via `/eco go`, via `eco go ...` in a user message, or 
 
 ### Default action (invoked without free text: `eco go` alone)
 
-Run the first applicable branch of this decision ladder. Announce which branch fired before doing the work: `"Wiki state: <reason>. Running <op>."`
+Run the first applicable branch of this decision ladder. Announce which branch fired before doing the work: `"Base state: <reason>. Running <op>."`
 
 1. **Uncompiled raw sources exist** (`raw/articles/*.md` whose slug has no matching `wiki/<slug>.md`) → `ecogo compile`.
 2. **Pages flagged `[!WARNING] unverified`** (from scheduled re-verification or prior correction) → print the list and suggest `ecogo correct <page-slug>` for each. Do not auto-correct without confirmation.
@@ -194,7 +194,8 @@ Run the first applicable branch of this decision ladder. Announce which branch f
 4. **Eval baseline exists AND last eval older than 7 days** (`outputs/evals/questions.md` has no `[REPLACE]` placeholders AND last line of `outputs/evals/history.jsonl` is > 7 days old) → `ecogo eval`.
 5. **Backlog has ≥ 1 open item with priority `high`** → `ecogo fetch` (top high-priority item).
 6. **New observations since last distill** (`outputs/learnings-raw.jsonl` modified after last `## [YYYY-MM-DD] learn` in `log.md`) → `ecogo learn`.
-7. **None of the above** → print `"Wiki is idle. Nothing urgent."` plus a friendly list of what the user could do: seed eval questions if placeholders remain, ingest a source, run `ecogo eval` for a fresh baseline, etc. Do NOT run any op.
+7. **Proposed learnings pending user review** (entries in `outputs/learnings.md` under `## Proposed`) → surface the top 3 with one-line summaries and ask user to accept/reject. Do not auto-accept.
+8. **None of the above** → print `"Base is idle. Nothing urgent."` plus a friendly list of what the user could do: seed eval questions if placeholders remain, ingest a source, run `ecogo eval` for a fresh baseline, start a design with `eco go design <topic>`, etc. Do NOT run any op.
 
 ### Free-text routing (`eco go <free text>`)
 
@@ -213,6 +214,72 @@ Classify the free text against the intent table. If a row matches confidently, i
 | "run the daily thing", "run everything", "do the updates", "tick" | `ecogo run` (default profile) | No args. |
 | "what can you do", "help", "commands", "how does this work" | Print a plain-English help block (see Help Summary below). No op invocation. |
 | "remember: <fact>" / "note: <fact>" | `ecogo ingest` (inline mode — save the fact as a short raw/articles/ note with user attribution) | Use today's date and a slug derived from the first 5 words. |
+| "how did we decide X", "what did we discuss about X", "remind me about X", "do you remember X" | **Memory-first recall.** Step 1: check `wiki/queries/` for a prior filed answer to a similar question (match by slug overlap). Step 2: if the `episodic-memory:search-conversations` skill is available, invoke it. Step 3: fall back to `ecogo query` against the wiki. Announce which step hit. |
+| "design X", "new feature Y", "let's build Z", "how should we approach X", "spec out X", "brainstorm X" | **Invoke the `brainstorming` skill.** Run `/ecogo-workflow:brainstorming <free text>`. The skill has its own hard-gate (no code until design approved) — respect that gate even under autonomous flow. Pass the free text verbatim. |
+| "implement the plan", "execute the tasks", "run the implementation plan at <path>", "build it" (when a plan already exists) | **Invoke the `subagent-driven-development` skill.** Run `/ecogo-workflow:subagent-driven-development` with the most recent plan path from `docs/superpowers/plans/` (or the path named in the free text). This skill dispatches fresh subagents per task with two-stage review. |
+| "build me X from scratch", "design and ship X", "take me from idea to code on X" | **Chained flow: brainstorming → plan → subagent-driven-development.** Announce the chain. Invoke `brainstorming` first. After its design spec is approved, the brainstorming skill itself will hand off to the writing-plans convention. After a plan exists, invoke `subagent-driven-development`. User approves each gate. |
+
+### Skill orchestration (how the plugin picks among its own ops and bundled skills)
+
+The plugin's thirteen ops handle the knowledge-base lifecycle (ingest, compile, query, correct, etc.). The **bundled third-party skills** handle the work that a knowledge base can't do on its own — designing new features, recalling prior conversations, executing plans task-by-task. The router chooses among them along three axes:
+
+1. **Retrieval axis** — when the user is looking for information:
+   - Look it up in the base → `ecogo query`
+   - Recall from prior Claude Code conversations → `episodic-memory:search-conversations` (if available)
+   - Recall from a filed query → read `wiki/queries/<slug>.md` directly (no op)
+   - Do all three in that order and compose the result. Prefer the fastest source that has an answer.
+
+2. **Design axis** — when the user is going to build something new:
+   - Single-question clarification → answer directly
+   - Multi-step new feature → `/ecogo-workflow:brainstorming` (bundled). Respects its own HARD-GATE: no code until the design is approved.
+   - After a design is approved, the brainstorming skill itself terminates by handing off to the writing-plans workflow; the plan file lands in `docs/superpowers/plans/`.
+
+3. **Execution axis** — when a plan already exists and the user wants it built:
+   - Small single-file edit → apply directly
+   - Multi-task plan → `/ecogo-workflow:subagent-driven-development` (bundled). Dispatches a fresh subagent per task with two-stage review (spec compliance then code quality) and a fix-review loop.
+   - Single-session parallel independent tasks → use `superpowers:dispatching-parallel-agents` if installed; otherwise serial subagent-driven-development.
+
+Skills layer cleanly. A single "take this from idea to shipped code" ask becomes:
+
+```
+brainstorming  →  writing-plans  →  subagent-driven-development  →  (optional) compile into the base as an ADR
+                                                                     (runs ecogo compile with the plan + spec as sources)
+```
+
+Announce the chain before starting each link. Respect each skill's own gates. The plugin is an orchestrator, not a gate-skipper.
+
+### Self-improvement loop
+
+Already built in — this subsection makes the mechanics visible so autonomous flows can use them:
+
+1. **Every op emits observations** (`ecogo compile`, `ecogo lint`, `ecogo eval`, `ecogo correct`, `ecogo fetch`, `ecogo gap`) into `outputs/learnings-raw.jsonl` per the **Learning Subsystem** section above.
+2. **`ecogo learn` distills** raw observations by class. When a class crosses the threshold (default: ≥5 in 30 days), the distill drafts a proposed rule and moves the entry to `## Proposed`.
+3. **User accepts or rejects** via `ecogo learn accept <L-id>` / `reject <L-id>`. Accepted rules become a runtime overlay read by every op.
+4. **Promote to schema** via `ecogo learn promote <L-id>` once a rule has proven stable. The rule is appended to the base's `CLAUDE.md` and becomes permanent behavior.
+
+This loop is what makes the plugin behave better over time per wiki without editing this shipped SKILL.md. The **default-action decision ladder** includes `ecogo learn` (step 6) so recurring observations get distilled on idle ticks, and step 7 surfaces pending proposals for user review. Routing decisions themselves can be tuned: if the user consistently rejects a route, emit an observation with class `route-ambiguous` and `learn` will eventually propose a new routing rule.
+
+### Autonomous flows
+
+What the plugin will do without asking (safe, observational, idempotent):
+
+- **Read operations**: `query`, `rationale list`, `learn list`, `lint` (findings only), backlog listings, default-action ladder traversal, `eval` when a baseline exists and is stale.
+- **Idempotent compile**: `compile` of already-staged `raw/articles/*.md` with `compiled: false`. Content is grounded; self-critique catches fabrication.
+- **Observation emission**: all ops emit observations without asking.
+- **`learn` distill**: rolling raw observations into `## Observing` / `## Proposed` is safe. Accepting/rejecting is not.
+- **Scheduled runs** (`ecogo run` composer) within their idempotency gate.
+
+What **requires user confirmation** (has side effects, external I/O, or writes to memory):
+
+- `ingest <url>` — fetches external content into `raw/`.
+- `fetch <gap>` — same, goes to the web.
+- `correct` of a page — modifies a wiki page's content.
+- `remove <name>` — destroys a whole base.
+- `learn accept` / `learn reject` / `learn promote` — changes what the plugin will do on future runs.
+- `brainstorming` approval gates — the skill's HARD-GATE is never skipped autonomously.
+- `subagent-driven-development` task dispatch — first task always confirmed; subsequent tasks within a single plan can proceed without re-confirming if accepted-learnings have granted it.
+
+The guiding principle: **the plugin automates the parts that are safe because they are observable (everything it does writes to `log.md` and emits observations), and asks for approval on the parts where a wrong call would cost the user real time or money.**
 
 ### Disambiguation
 
@@ -228,22 +295,29 @@ For routes where a wrong guess is costly (ingest, correct, fetch, run, remove): 
 
 When asked "help" or "what can you do", print something like:
 
-> **This wiki can:**
-> - **Look things up** — ask a question in plain English.
+> **This plugin can:**
+> - **Look things up** — ask a question in plain English. Checks prior filed answers + past conversations (if episodic-memory available) + the base, in that order.
 > - **Remember new things** — paste a URL or file path, say "save this".
-> - **Fix itself** — say "is X wrong" or "fix X" and it re-grounds the page against its sources.
+> - **Fix itself** — say "is X wrong" or "fix X" and it re-grounds the page against its cited sources and declared code repositories.
 > - **Check itself** — say "audit" or "check everything" to find broken links, outdated pages, missing sections.
-> - **Grade itself** — say "score the wiki" once evaluation questions are defined.
+> - **Grade itself** — say "score the base" once evaluation questions are defined.
 > - **Find gaps** — say "what should I work on" to see the open backlog.
 > - **Pull new sources** — say "find info about X" to search the web and stage sources for next compile.
+> - **Design new features** — say "design X" or "new feature Y" and it runs the brainstorming skill (hard-gate: no code until design is approved).
+> - **Execute a plan** — say "implement the plan" or "build it" when a written plan already exists; dispatches subagents per task with two-stage review.
+> - **Take an idea from zero to shipped code** — say "build me X from scratch" and it chains design → plan → execute with a gate at each step.
+> - **Learn from itself** — every op emits observations. Recurring patterns become proposed rules you accept or reject. Accepted rules apply to every future run.
 >
 > **Most-used triggers:**
 > - `eco go` — do the smart thing for current state
-> - `eco go <question>` — look something up
+> - `eco go <question>` — look something up (memory-first)
 > - `eco go fix <page name>` — correct a page
 > - `eco go save <url>` — ingest a source
+> - `eco go design <feature>` — start a brainstorm
+> - `eco go build me <feature> from scratch` — full chained workflow
 > - `eco go audit the engineering docs` — lint
 > - `eco go what should I work on` — show backlog
+> - `eco go` (alone, on a cron) — autonomous upkeep tick
 
 ---
 
